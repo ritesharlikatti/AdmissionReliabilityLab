@@ -1,0 +1,47 @@
+using Admission.Api.Data;
+using Admission.Api.Models;
+using Admission.Api.Services;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpClient<
+    IExternalAdmissionClient,
+    ExternalAdmissionClient>(
+        client =>
+        {
+            client.BaseAddress = new Uri(
+                builder.Configuration["ExternalAdmission:BaseUrl"]!);
+        });
+
+builder.Services.AddDbContext<AdmissionDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<IApplicationService, ApplicationService>();
+builder.Services.AddControllers();
+builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.MapGet("/", () =>
+{
+    return Results.Ok(new
+    {
+        application = "Admission Reliability Lab",
+        status = "Running"
+    });
+});
+
+app.MapControllers();
+app.Run();

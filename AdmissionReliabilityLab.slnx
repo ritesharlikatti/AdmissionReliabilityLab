@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Admission.Api/Admission.Api.csproj" />
+    <Project Path="src/ExternalAdmission.Api/ExternalAdmission.Api.csproj" />
+  </Folder>
+</Solution>
