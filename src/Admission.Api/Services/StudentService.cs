@@ -83,9 +83,6 @@ public class StudentService : IStudentService
             "{StudentNumber} passed the application-level duplicate check",
             request.StudentNumber);
 
-        // Deliberately widen the race-condition window.
-        await Task.Delay(2000, cancellationToken);
-
         var student = new Student
         {
             FirstName = request.FirstName,
