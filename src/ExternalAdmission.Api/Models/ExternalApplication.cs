@@ -15,4 +15,8 @@ public class ExternalApplication
     public string Status { get; set; } = string.Empty;
 
     public DateTime ReceivedAt { get; set; }
+
+    public string? IdempotencyKey { get; set; }
+
+    public string? RequestHash { get; set; }
 }

@@ -13,12 +13,29 @@ public class ExternalAdmissionClient : IExternalAdmissionClient
     }
 
     public async Task<ExternalAdmissionResponse> CreateApplicationAsync(
-        ExternalAdmissionRequest request,
-        CancellationToken cancellationToken)
+    ExternalAdmissionRequest request,
+    string idempotencyKey,
+    bool simulateTimeout,
+    CancellationToken cancellationToken)
     {
-        var response = await _httpClient.PostAsJsonAsync(
-            "api/applications",
-            request,
+        var endpoint = simulateTimeout
+            ? "api/applications?simulateSlowResponse=true"
+            : "api/applications";
+
+        using var httpRequest =
+            new HttpRequestMessage(
+                HttpMethod.Post,
+                endpoint);
+
+        httpRequest.Headers.Add(
+            "Idempotency-Key",
+            idempotencyKey);
+
+        httpRequest.Content =
+            JsonContent.Create(request);
+
+        var response = await _httpClient.SendAsync(
+            httpRequest,
             cancellationToken);
 
         response.EnsureSuccessStatusCode();
@@ -33,7 +50,6 @@ public class ExternalAdmissionClient : IExternalAdmissionClient
             throw new InvalidOperationException(
                 "External admission platform returned an empty response.");
         }
-
         return result;
     }
 }

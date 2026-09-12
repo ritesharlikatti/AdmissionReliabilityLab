@@ -12,6 +12,7 @@ builder.Services.AddHttpClient<
         {
             client.BaseAddress = new Uri(
                 builder.Configuration["ExternalAdmission:BaseUrl"]!);
+            client.Timeout = TimeSpan.FromSeconds(3);
         });
 
 builder.Services.AddDbContext<AdmissionDbContext>(options =>

@@ -62,5 +62,9 @@ public class AdmissionDbContext : DbContext
             .HasForeignKey(audit => audit.ApplicationId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasIndex(application => application.IdempotencyKey)
+            .IsUnique();
+            
     }    
 }

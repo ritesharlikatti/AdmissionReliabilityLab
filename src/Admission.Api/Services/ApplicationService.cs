@@ -56,6 +56,7 @@ public class ApplicationService : IApplicationService
 
             StudentId = request.StudentId,
             CourseId = request.CourseId,
+            IdempotencyKey = Guid.NewGuid().ToString(),
             Status = ApplicationStatus.Submitted,
             CreatedAt = now,
             UpdatedAt = now
@@ -92,9 +93,11 @@ public class ApplicationService : IApplicationService
             var externalResponse =
                 await _externalAdmissionClient.CreateApplicationAsync(
                     externalRequest,
+                    application.IdempotencyKey!,
+                    request.SimulateExternalTimeout,
                     cancellationToken);
 
-            application.ExternalApplicationId = externalResponse.ExternalApplicationId;            
+            application.ExternalApplicationId = externalResponse.ExternalApplicationId;
             application.Status = ApplicationStatus.Processing;
             application.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
@@ -116,6 +119,64 @@ public class ApplicationService : IApplicationService
             CreatedAt = application.CreatedAt,
             UpdatedAt = application.UpdatedAt,
             ExternalApplicationId = application.ExternalApplicationId
+        };
+    }
+
+    public async Task<ApplicationResponse> RetryExternalSubmissionAsync(
+    int applicationId,
+    CancellationToken cancellationToken)
+    {
+        var application = await _db.Applications
+            .Include(application => application.Student)
+            .Include(application => application.Course)
+            .SingleOrDefaultAsync(
+                application => application.Id == applicationId,
+                cancellationToken);
+
+        if (application is null)
+        {
+            throw new EntityNotFoundException(
+                $"Application {applicationId} does not exist.");
+        }
+
+        var externalRequest = new ExternalAdmissionRequest
+        {
+            SourceApplicationNumber = application.ApplicationNumber,
+            StudentNumber = application.Student.StudentNumber,
+            CourseCode = application.Course.Code
+        };
+
+        if (string.IsNullOrWhiteSpace(application.IdempotencyKey))
+        {
+            throw new InvalidOperationException(
+                "This application predates idempotency support and cannot be safely retried using this lab workflow.");
+        }
+
+        var externalResponse =
+            await _externalAdmissionClient.CreateApplicationAsync(
+                externalRequest,
+                application.IdempotencyKey!,
+                simulateTimeout: false,
+                cancellationToken);
+
+        application.ExternalApplicationId =
+            externalResponse.ExternalApplicationId;
+
+        application.Status = ApplicationStatus.Processing;
+        application.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new ApplicationResponse
+        {
+            Id = application.Id,
+            ApplicationNumber = application.ApplicationNumber,
+            StudentId = application.StudentId,
+            CourseId = application.CourseId,
+            Status = application.Status.ToString(),
+            ExternalApplicationId = application.ExternalApplicationId,
+            CreatedAt = application.CreatedAt,
+            UpdatedAt = application.UpdatedAt
         };
     }
 }

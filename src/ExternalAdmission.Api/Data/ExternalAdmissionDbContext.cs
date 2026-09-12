@@ -12,4 +12,15 @@ public class ExternalAdmissionDbContext : DbContext
     }
 
     public DbSet<ExternalApplication> Applications { get; set; }
+
+    protected override void OnModelCreating(
+    ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<ExternalApplication>()
+            .HasIndex(application => application.IdempotencyKey)
+            .IsUnique()
+            .HasFilter("[IdempotencyKey] IS NOT NULL");
+    }
 }

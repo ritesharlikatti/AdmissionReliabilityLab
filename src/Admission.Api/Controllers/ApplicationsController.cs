@@ -43,4 +43,29 @@ public class ApplicationsController : ControllerBase
             });
         }
     }
+
+    [HttpPost("{id:int}/retry-external")]
+    public async Task<ActionResult<ApplicationResponse>> RetryExternal(
+    int id,
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            var application =
+                await _applicationService.RetryExternalSubmissionAsync(
+                    id,
+                    cancellationToken);
+
+            return Ok(application);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Application not found",
+                Detail = ex.Message,
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+    }
 }

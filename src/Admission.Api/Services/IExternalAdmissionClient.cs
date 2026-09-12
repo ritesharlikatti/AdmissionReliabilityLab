@@ -6,5 +6,7 @@ public interface IExternalAdmissionClient
 {
     Task<ExternalAdmissionResponse> CreateApplicationAsync(
         ExternalAdmissionRequest request,
+        string idempotencyKey,
+        bool simulateTimeout,
         CancellationToken cancellationToken);
 }
