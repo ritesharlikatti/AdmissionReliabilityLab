@@ -11,4 +11,7 @@ public class CreateApplicationRequest
     public int CourseId { get; set; }
 
     public bool SimulateExternalTimeout { get; set; }
+
+    [Range(0, 5)]
+    public int SimulateTransientFailures { get; set; }
 }

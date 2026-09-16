@@ -6,21 +6,27 @@ namespace Admission.Api.Services;
 public class ExternalAdmissionClient : IExternalAdmissionClient
 {
     private readonly HttpClient _httpClient;
-
-    public ExternalAdmissionClient(HttpClient httpClient)
+    private readonly ILogger<ExternalAdmissionClient> _logger;
+    public ExternalAdmissionClient(
+    HttpClient httpClient,
+    ILogger<ExternalAdmissionClient> logger)
     {
         _httpClient = httpClient;
+        _logger = logger;
     }
+
 
     public async Task<ExternalAdmissionResponse> CreateApplicationAsync(
     ExternalAdmissionRequest request,
     string idempotencyKey,
     bool simulateTimeout,
+    int simulateTransientFailures,
     CancellationToken cancellationToken)
     {
-        var endpoint = simulateTimeout
-            ? "api/applications?simulateSlowResponse=true"
-            : "api/applications";
+        var endpoint =
+            $"api/applications" +
+            $"?simulateSlowResponse={simulateTimeout.ToString().ToLowerInvariant()}" +
+            $"&failFirstAttempts={simulateTransientFailures}";
 
         using var httpRequest =
             new HttpRequestMessage(

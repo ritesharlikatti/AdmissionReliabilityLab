@@ -6,6 +6,7 @@ using ExternalAdmission.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace ExternalAdmission.Api.Controllers;
 
@@ -14,9 +15,9 @@ namespace ExternalAdmission.Api.Controllers;
 public class ApplicationsController : ControllerBase
 {
     private readonly ExternalAdmissionDbContext _db;
+    private static readonly ConcurrentDictionary<string, int> AttemptCounts = new();
 
-    public ApplicationsController(
-        ExternalAdmissionDbContext db)
+    public ApplicationsController(ExternalAdmissionDbContext db)
     {
         _db = db;
     }
@@ -28,6 +29,7 @@ public class ApplicationsController : ControllerBase
     [FromHeader(Name = "Idempotency-Key")]
     string? idempotencyKey,
     [FromQuery] bool simulateSlowResponse,
+    [FromQuery] int failFirstAttempts,
     CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(idempotencyKey))
@@ -58,6 +60,27 @@ public class ApplicationsController : ControllerBase
             }
 
             return Ok(existing);
+        }
+
+        if (failFirstAttempts > 0)
+        {
+            var attempt = AttemptCounts.AddOrUpdate(
+                idempotencyKey,
+                1,
+                (_, currentAttempt) => currentAttempt + 1);
+
+            if (attempt <= failFirstAttempts)
+            {
+                return StatusCode(
+                    StatusCodes.Status503ServiceUnavailable,
+                    new ProblemDetails
+                    {
+                        Title = "Simulated temporary outage",
+                        Detail =
+                            $"External platform simulated failure on attempt {attempt}.",
+                        Status = StatusCodes.Status503ServiceUnavailable
+                    });
+            }
         }
 
         var application = new ExternalApplication

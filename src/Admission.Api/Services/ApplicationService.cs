@@ -95,6 +95,7 @@ public class ApplicationService : IApplicationService
                     externalRequest,
                     application.IdempotencyKey!,
                     request.SimulateExternalTimeout,
+                    request.SimulateTransientFailures,
                     cancellationToken);
 
             application.ExternalApplicationId = externalResponse.ExternalApplicationId;
@@ -157,6 +158,7 @@ public class ApplicationService : IApplicationService
                 externalRequest,
                 application.IdempotencyKey!,
                 simulateTimeout: false,
+                simulateTransientFailures: 0,
                 cancellationToken);
 
         application.ExternalApplicationId =

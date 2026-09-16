@@ -8,5 +8,6 @@ public interface IExternalAdmissionClient
         ExternalAdmissionRequest request,
         string idempotencyKey,
         bool simulateTimeout,
+        int simulateTransientFailures,
         CancellationToken cancellationToken);
 }

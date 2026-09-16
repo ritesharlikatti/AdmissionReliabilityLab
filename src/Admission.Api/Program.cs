@@ -2,18 +2,29 @@ using Admission.Api.Data;
 using Admission.Api.Models;
 using Admission.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHttpClient<
-    IExternalAdmissionClient,
-    ExternalAdmissionClient>(
-        client =>
-        {
-            client.BaseAddress = new Uri(
-                builder.Configuration["ExternalAdmission:BaseUrl"]!);
-            client.Timeout = TimeSpan.FromSeconds(3);
-        });
+builder.Services
+    .AddHttpClient<
+        IExternalAdmissionClient,
+        ExternalAdmissionClient>(
+            client =>
+            {
+                client.BaseAddress = new Uri(
+                    builder.Configuration["ExternalAdmission:BaseUrl"]!);
+            })
+    .AddStandardResilienceHandler(options =>
+    {
+        options.Retry.MaxRetryAttempts = 3;
+        options.Retry.Delay = TimeSpan.FromSeconds(1);
+        options.Retry.BackoffType = DelayBackoffType.Exponential;
+        options.Retry.UseJitter = false;
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(3);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(15);
+    });    
 
 builder.Services.AddDbContext<AdmissionDbContext>(options =>
     options.UseSqlServer(
