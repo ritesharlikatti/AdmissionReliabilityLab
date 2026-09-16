@@ -4,6 +4,7 @@ using Admission.Api.Models;
 using Admission.Api.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Admission.Api.DTOs.ExternalAdmission;
+using Admission.Api.DTOs.Webhooks;
 
 namespace Admission.Api.Services;
 
@@ -180,5 +181,41 @@ public class ApplicationService : IApplicationService
             CreatedAt = application.CreatedAt,
             UpdatedAt = application.UpdatedAt
         };
+    }
+
+
+    public async Task<bool> ProcessAdmissionWebhookAsync(
+        AdmissionWebhookRequest request,
+        CancellationToken cancellationToken)
+    {
+        var application =
+            await _db.Applications
+                .SingleOrDefaultAsync(
+                    application =>
+                        application.ExternalApplicationId ==
+                        request.ExternalApplicationId,
+                    cancellationToken);
+
+        if (application is null)
+        {
+            return false;
+        }
+
+        if (!Enum.TryParse<ApplicationStatus>(
+                request.Status,
+                ignoreCase: true,
+                out var newStatus))
+        {
+            throw new InvalidOperationException(
+                $"Unsupported application status '{request.Status}'.");
+        }
+
+        application.Status = newStatus;
+        application.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(
+            cancellationToken);
+
+        return true;
     }
 }

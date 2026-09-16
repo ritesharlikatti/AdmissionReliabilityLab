@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
+using System.Net.Http.Json;
 
 namespace ExternalAdmission.Api.Controllers;
 
@@ -15,12 +16,15 @@ namespace ExternalAdmission.Api.Controllers;
 public class ApplicationsController : ControllerBase
 {
     private readonly ExternalAdmissionDbContext _db;
+    private readonly IHttpClientFactory _httpClientFactory;
     private static readonly ConcurrentDictionary<string, int> AttemptCounts = new();
 
-    public ApplicationsController(ExternalAdmissionDbContext db)
+    public ApplicationsController(ExternalAdmissionDbContext db, IHttpClientFactory httpClientFactory)
     {
         _db = db;
+        _httpClientFactory = httpClientFactory;
     }
+
 
     [HttpPost]
     [HttpPost]
@@ -144,7 +148,7 @@ public class ApplicationsController : ControllerBase
         return Created(
             $"/api/applications/{application.ExternalApplicationId}",
             application);
-    }    
+    }
     private static string CreateRequestHash(
     CreateExternalApplicationRequest request)
     {
@@ -159,4 +163,69 @@ public class ApplicationsController : ControllerBase
         return Convert.ToHexString(bytes);
     }
 
+    [HttpPost("{externalApplicationId}/simulate-accepted")]
+    public async Task<IActionResult> SimulateAccepted(
+    string externalApplicationId,
+    CancellationToken cancellationToken)
+    {
+        var application =
+            await _db.Applications
+                .SingleOrDefaultAsync(
+                    application =>
+                        application.ExternalApplicationId ==
+                        externalApplicationId,
+                    cancellationToken);
+
+        if (application is null)
+        {
+            return NotFound();
+        }
+
+        application.Status = "Accepted";
+
+        await _db.SaveChangesAsync(
+            cancellationToken);
+
+        var webhook = new
+        {
+            eventId =
+                $"EVT-{Guid.NewGuid()
+                    .ToString("N")[..12]
+                    .ToUpperInvariant()}",
+
+            eventType =
+                "admission.status.changed",
+
+            externalApplicationId =
+                application.ExternalApplicationId,
+
+            sourceApplicationNumber =
+                application.SourceApplicationNumber,
+
+            status =
+                application.Status,
+
+            occurredAt =
+                DateTime.UtcNow
+        };
+
+        var client =
+            _httpClientFactory.CreateClient(
+                "AdmissionApi");
+
+        var response =
+            await client.PostAsJsonAsync(
+                "api/webhooks/admission",
+                webhook,
+                cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        return Ok(new
+        {
+            application.ExternalApplicationId,
+            application.Status,
+            webhookDelivered = true
+        });
+    }
 }

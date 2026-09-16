@@ -8,6 +8,15 @@ builder.Services.AddDbContext<ExternalAdmissionDbContext>(
         options.UseSqlServer(
             builder.Configuration
                 .GetConnectionString("DefaultConnection")));
+                
+builder.Services.AddHttpClient(
+    "AdmissionApi",
+    client =>
+    {
+        client.BaseAddress = new Uri(
+            builder.Configuration[
+                "AdmissionApi:BaseUrl"]!);
+    });
 
 builder.Services.AddControllers();
 
