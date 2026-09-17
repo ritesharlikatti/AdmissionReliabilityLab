@@ -15,7 +15,6 @@ public class ExternalAdmissionClient : IExternalAdmissionClient
         _logger = logger;
     }
 
-
     public async Task<ExternalAdmissionResponse> CreateApplicationAsync(
     ExternalAdmissionRequest request,
     string idempotencyKey,
@@ -57,5 +56,26 @@ public class ExternalAdmissionClient : IExternalAdmissionClient
                 "External admission platform returned an empty response.");
         }
         return result;
+    }
+
+    public async Task<ExternalAdmissionResponse?> GetApplicationAsync(
+    string externalApplicationId,
+    CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.GetAsync(
+            $"api/applications/{Uri.EscapeDataString(externalApplicationId)}",
+            cancellationToken);
+
+        if (response.StatusCode ==
+            System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+            .ReadFromJsonAsync<ExternalAdmissionResponse>(
+                cancellationToken: cancellationToken);
     }
 }

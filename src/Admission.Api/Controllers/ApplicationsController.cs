@@ -68,4 +68,30 @@ public class ApplicationsController : ControllerBase
             });
         }
     }
+
+    [HttpPost("{id:int}/reconcile")]
+    public async Task<ActionResult<ReconciliationResponse>> Reconcile(
+    int id,
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result =
+                await _applicationService.ReconcileAsync(
+                    id,
+                    cancellationToken);
+
+            return Ok(result);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Application not found",
+                Detail = ex.Message,
+                Status =
+                    StatusCodes.Status404NotFound
+            });
+        }
+    }
 }

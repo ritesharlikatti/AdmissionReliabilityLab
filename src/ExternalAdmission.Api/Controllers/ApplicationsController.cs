@@ -193,7 +193,7 @@ public class ApplicationsController : ControllerBase
             //     $"EVT-{Guid.NewGuid()
             //         .ToString("N")[..12]
             //         .ToUpperInvariant()}",
-            eventId = string.IsNullOrWhiteSpace(eventId)? $"EVT-{Guid.NewGuid().ToString("N")[..12].ToUpperInvariant()}" : eventId,
+            eventId = string.IsNullOrWhiteSpace(eventId) ? $"EVT-{Guid.NewGuid().ToString("N")[..12].ToUpperInvariant()}" : eventId,
 
             eventType = "admission.status.changed",
 
@@ -224,5 +224,55 @@ public class ApplicationsController : ControllerBase
             application.Status,
             webhookDelivered = true
         });
-    }    
+    }
+
+    [HttpGet("{externalApplicationId}")]
+    public async Task<IActionResult> GetByExternalId(
+    string externalApplicationId,
+    CancellationToken cancellationToken)
+    {
+        var application = await _db.Applications
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                application =>
+                    application.ExternalApplicationId ==
+                    externalApplicationId,
+                cancellationToken);
+
+        if (application is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(application);
+    }
+
+    [HttpPost("{externalApplicationId}/simulate-accepted-no-webhook")]
+    public async Task<IActionResult> SimulateAcceptedWithoutWebhook(
+    string externalApplicationId,
+    CancellationToken cancellationToken)
+    {
+        var application = await _db.Applications
+            .SingleOrDefaultAsync(
+                application =>
+                    application.ExternalApplicationId ==
+                    externalApplicationId,
+                cancellationToken);
+
+        if (application is null)
+        {
+            return NotFound();
+        }
+
+        application.Status = "Accepted";
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return Ok(new
+        {
+            application.ExternalApplicationId,
+            application.Status,
+            webhookDelivered = false
+        });
+    }
 }

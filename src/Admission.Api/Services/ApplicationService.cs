@@ -257,4 +257,89 @@ public class ApplicationService : IApplicationService
 
         return WebhookProcessingResult.Processed;
     }
+
+    public async Task<ReconciliationResponse> ReconcileAsync(
+    int applicationId,
+    CancellationToken cancellationToken)
+    {
+        var application = await _db.Applications
+            .SingleOrDefaultAsync(
+                application => application.Id == applicationId,
+                cancellationToken);
+
+        if (application is null)
+        {
+            throw new EntityNotFoundException(
+                $"Application {applicationId} does not exist.");
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                application.ExternalApplicationId))
+        {
+            throw new InvalidOperationException(
+                $"Application {applicationId} does not have an external application ID.");
+        }
+
+        var localStatusBefore =
+            application.Status.ToString();
+
+        var externalApplication =
+            await _externalAdmissionClient.GetApplicationAsync(
+                application.ExternalApplicationId,
+                cancellationToken);
+
+        if (externalApplication is null)
+        {
+            throw new EntityNotFoundException(
+                $"External application '{application.ExternalApplicationId}' does not exist.");
+        }
+
+        if (!Enum.TryParse<ApplicationStatus>(
+                externalApplication.Status,
+                ignoreCase: true,
+                out var externalStatus))
+        {
+            throw new InvalidOperationException(
+                $"Unsupported external status '{externalApplication.Status}'.");
+        }
+
+        var changed =
+            application.Status != externalStatus;
+
+        if (changed)
+        {
+            application.Status = externalStatus;
+            application.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(
+                cancellationToken);
+        }
+
+        return new ReconciliationResponse
+        {
+            ApplicationId = application.Id,
+            ApplicationNumber =
+                application.ApplicationNumber,
+
+            ExternalApplicationId =
+                application.ExternalApplicationId,
+
+            LocalStatusBefore =
+                localStatusBefore,
+
+            ExternalStatus =
+                externalApplication.Status,
+
+            LocalStatusAfter =
+                application.Status.ToString(),
+
+            Changed =
+                changed,
+
+            Message =
+                changed
+                    ? "Local application status was reconciled with the external platform."
+                    : "Local and external application statuses were already consistent."
+        };
+    }
 }

@@ -17,4 +17,8 @@ public interface IApplicationService
     Task<WebhookProcessingResult> ProcessAdmissionWebhookAsync(
         AdmissionWebhookRequest request,
         CancellationToken cancellationToken);
+    
+    Task<ReconciliationResponse> ReconcileAsync(
+        int applicationId,
+        CancellationToken cancellationToken);
 }

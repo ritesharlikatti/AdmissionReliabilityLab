@@ -10,4 +10,7 @@ public interface IExternalAdmissionClient
         bool simulateTimeout,
         int simulateTransientFailures,
         CancellationToken cancellationToken);
+    Task<ExternalAdmissionResponse?> GetApplicationAsync(
+        string externalApplicationId,
+        CancellationToken cancellationToken);
 }
