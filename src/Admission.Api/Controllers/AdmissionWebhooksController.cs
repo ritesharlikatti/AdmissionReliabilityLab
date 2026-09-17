@@ -1,4 +1,5 @@
 using Admission.Api.DTOs.Webhooks;
+using Admission.Api.Models;
 using Admission.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,32 +18,45 @@ public class AdmissionWebhooksController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Receive(
-        AdmissionWebhookRequest request,
-        CancellationToken cancellationToken)
-    {
-        var processed =
-            await _applicationService
-                .ProcessAdmissionWebhookAsync(
-                    request,
-                    cancellationToken);
+public async Task<IActionResult> Receive(
+    AdmissionWebhookRequest request,
+    CancellationToken cancellationToken)
+{
+    var result =
+        await _applicationService
+            .ProcessAdmissionWebhookAsync(
+                request,
+                cancellationToken);
 
-        if (!processed)
+        return result switch
         {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Application not found",
-                Detail =
-                    $"No local application was found for external ID " +
-                    $"'{request.ExternalApplicationId}'.",
-                Status =
-                    StatusCodes.Status404NotFound
-            });
-        }
+            WebhookProcessingResult.Processed =>
+                Ok(new
+                {
+                    message =
+                        "Webhook processed successfully."
+                }),
 
-        return Ok(new
-        {
-            message = "Webhook processed successfully."
-        });
-    }
+            WebhookProcessingResult.AlreadyProcessed =>
+                Ok(new
+                {
+                    message =
+                        "Webhook was already processed."
+                }),
+
+            WebhookProcessingResult.ApplicationNotFound =>
+                NotFound(new ProblemDetails
+                {
+                    Title = "Application not found",
+                    Detail =
+                        $"No local application was found for external ID " +
+                        $"'{request.ExternalApplicationId}'.",
+                    Status =
+                        StatusCodes.Status404NotFound
+                }),
+            _ => throw new InvalidOperationException(
+                "Unexpected webhook processing result.")
+        };
+    
+}
 }

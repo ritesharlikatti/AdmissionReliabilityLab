@@ -19,6 +19,8 @@ public class AdmissionDbContext : DbContext
 
     public DbSet<ApplicationAudit> ApplicationAudits { get; set; }
 
+    public DbSet<AdmissionWebhookEvent> AdmissionWebhookEvents { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -64,6 +66,10 @@ public class AdmissionDbContext : DbContext
 
         modelBuilder.Entity<AdmissionApplication>()
             .HasIndex(application => application.IdempotencyKey)
+            .IsUnique();
+        
+        modelBuilder.Entity<AdmissionWebhookEvent>()
+            .HasIndex(webhook => webhook.EventId)
             .IsUnique();
             
     }    

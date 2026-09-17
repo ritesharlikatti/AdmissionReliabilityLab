@@ -1,5 +1,6 @@
 using Admission.Api.DTOs.Applications;
 using Admission.Api.DTOs.Webhooks;
+using Admission.Api.Models;
 namespace Admission.Api.Services;
 
 
@@ -13,7 +14,7 @@ public interface IApplicationService
         int applicationId,
         CancellationToken cancellationToken);
 
-    Task<bool> ProcessAdmissionWebhookAsync(
+    Task<WebhookProcessingResult> ProcessAdmissionWebhookAsync(
         AdmissionWebhookRequest request,
         CancellationToken cancellationToken);
 }

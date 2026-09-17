@@ -184,10 +184,24 @@ public class ApplicationService : IApplicationService
     }
 
 
-    public async Task<bool> ProcessAdmissionWebhookAsync(
+    public async Task<WebhookProcessingResult>
+    ProcessAdmissionWebhookAsync(
         AdmissionWebhookRequest request,
         CancellationToken cancellationToken)
     {
+        var alreadyProcessed =
+            await _db.AdmissionWebhookEvents
+                .AsNoTracking()
+                .AnyAsync(
+                    webhook =>
+                        webhook.EventId == request.EventId,
+                    cancellationToken);
+
+        if (alreadyProcessed)
+        {
+            return WebhookProcessingResult.AlreadyProcessed;
+        }
+
         var application =
             await _db.Applications
                 .SingleOrDefaultAsync(
@@ -198,7 +212,7 @@ public class ApplicationService : IApplicationService
 
         if (application is null)
         {
-            return false;
+            return WebhookProcessingResult.ApplicationNotFound;
         }
 
         if (!Enum.TryParse<ApplicationStatus>(
@@ -213,9 +227,34 @@ public class ApplicationService : IApplicationService
         application.Status = newStatus;
         application.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync(
-            cancellationToken);
+        var webhookEvent =
+            new AdmissionWebhookEvent
+            {
+                EventId = request.EventId,
+                EventType = request.EventType,
+                ExternalApplicationId =
+                    request.ExternalApplicationId,
+                OccurredAt = request.OccurredAt,
+                ProcessedAt = DateTime.UtcNow
+            };
 
-        return true;
+        _db.AdmissionWebhookEvents.Add(webhookEvent);
+
+        try
+        {
+            await _db.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException
+                    is Microsoft.Data.SqlClient.SqlException sqlException
+                  &&
+                  (sqlException.Number == 2601 ||
+                   sqlException.Number == 2627))
+        {
+            return WebhookProcessingResult.AlreadyProcessed;
+        }
+
+        return WebhookProcessingResult.Processed;
     }
 }

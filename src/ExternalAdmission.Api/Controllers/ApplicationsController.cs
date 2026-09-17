@@ -166,6 +166,7 @@ public class ApplicationsController : ControllerBase
     [HttpPost("{externalApplicationId}/simulate-accepted")]
     public async Task<IActionResult> SimulateAccepted(
     string externalApplicationId,
+    [FromQuery] string? eventId,
     CancellationToken cancellationToken)
     {
         var application =
@@ -188,25 +189,21 @@ public class ApplicationsController : ControllerBase
 
         var webhook = new
         {
-            eventId =
-                $"EVT-{Guid.NewGuid()
-                    .ToString("N")[..12]
-                    .ToUpperInvariant()}",
+            // eventId =
+            //     $"EVT-{Guid.NewGuid()
+            //         .ToString("N")[..12]
+            //         .ToUpperInvariant()}",
+            eventId = string.IsNullOrWhiteSpace(eventId)? $"EVT-{Guid.NewGuid().ToString("N")[..12].ToUpperInvariant()}" : eventId,
 
-            eventType =
-                "admission.status.changed",
+            eventType = "admission.status.changed",
 
-            externalApplicationId =
-                application.ExternalApplicationId,
+            externalApplicationId = application.ExternalApplicationId,
 
-            sourceApplicationNumber =
-                application.SourceApplicationNumber,
+            sourceApplicationNumber = application.SourceApplicationNumber,
 
-            status =
-                application.Status,
+            status = application.Status,
 
-            occurredAt =
-                DateTime.UtcNow
+            occurredAt = DateTime.UtcNow
         };
 
         var client =
@@ -227,5 +224,5 @@ public class ApplicationsController : ControllerBase
             application.Status,
             webhookDelivered = true
         });
-    }
+    }    
 }
