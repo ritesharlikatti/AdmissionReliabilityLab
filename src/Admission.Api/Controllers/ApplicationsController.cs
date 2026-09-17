@@ -17,6 +17,16 @@ public class ApplicationsController : ControllerBase
         _applicationService = applicationService;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<List<ApplicationResponse>>> GetAll(
+        CancellationToken cancellationToken)
+    {
+        var applications =
+            await _applicationService.GetAllAsync(cancellationToken);
+
+        return Ok(applications);
+    }
+
     [HttpPost]
     public async Task<ActionResult<ApplicationResponse>> Create(
     CreateApplicationRequest request,
@@ -93,5 +103,23 @@ public class ApplicationsController : ControllerBase
                     StatusCodes.Status404NotFound
             });
         }
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ApplicationResponse>> GetById(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var application =
+            await _applicationService.GetByIdAsync(
+                id,
+                cancellationToken);
+
+        if (application is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(application);
     }
 }

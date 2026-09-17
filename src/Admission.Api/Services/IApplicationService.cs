@@ -6,6 +6,8 @@ namespace Admission.Api.Services;
 
 public interface IApplicationService
 {
+    Task<List<ApplicationResponse>> GetAllAsync(
+        CancellationToken cancellationToken);
     Task<ApplicationResponse> CreateAsync(
         CreateApplicationRequest request,
         CancellationToken cancellationToken);
@@ -17,8 +19,11 @@ public interface IApplicationService
     Task<WebhookProcessingResult> ProcessAdmissionWebhookAsync(
         AdmissionWebhookRequest request,
         CancellationToken cancellationToken);
-    
+
     Task<ReconciliationResponse> ReconcileAsync(
         int applicationId,
+        CancellationToken cancellationToken);
+    Task<ApplicationResponse?> GetByIdAsync(
+        int id,
         CancellationToken cancellationToken);
 }

@@ -342,4 +342,45 @@ public class ApplicationService : IApplicationService
                     : "Local and external application statuses were already consistent."
         };
     }
+
+    public async Task<ApplicationResponse?> GetByIdAsync(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        return await _db.Applications
+            .AsNoTracking()
+            .Where(application => application.Id == id)
+            .Select(application => new ApplicationResponse
+            {
+                Id = application.Id,
+                ApplicationNumber = application.ApplicationNumber,
+                StudentId = application.StudentId,
+                CourseId = application.CourseId,
+                Status = application.Status.ToString(),
+                ExternalApplicationId = application.ExternalApplicationId,
+                CreatedAt = application.CreatedAt,
+                UpdatedAt = application.UpdatedAt
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<List<ApplicationResponse>> GetAllAsync(
+        CancellationToken cancellationToken)
+    {
+        return await _db.Applications
+            .AsNoTracking()
+            .OrderBy(application => application.Id)
+            .Select(application => new ApplicationResponse
+            {
+                Id = application.Id,
+                ApplicationNumber = application.ApplicationNumber,
+                StudentId = application.StudentId,
+                CourseId = application.CourseId,
+                Status = application.Status.ToString(),
+                ExternalApplicationId = application.ExternalApplicationId,
+                CreatedAt = application.CreatedAt,
+                UpdatedAt = application.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
 }
