@@ -12,14 +12,15 @@ public class ApplicationService : IApplicationService
 {
     private readonly AdmissionDbContext _db;
     private readonly IExternalAdmissionClient _externalAdmissionClient;
+    private readonly ILogger<ApplicationService> _logger;
 
-    public ApplicationService(AdmissionDbContext db, IExternalAdmissionClient externalAdmissionClient)
+    public ApplicationService(AdmissionDbContext db, IExternalAdmissionClient externalAdmissionClient, ILogger<ApplicationService> logger)
     {
         _db = db;
         _externalAdmissionClient = externalAdmissionClient;
+        _logger = logger;
     }
-
-
+    
     public async Task<ApplicationResponse> CreateAsync(
         CreateApplicationRequest request,
         CancellationToken cancellationToken)
@@ -341,6 +342,49 @@ public class ApplicationService : IApplicationService
                     ? "Local application status was reconciled with the external platform."
                     : "Local and external application statuses were already consistent."
         };
+    }
+
+    public async Task<int> ReconcileProcessingApplicationsAsync(
+    CancellationToken cancellationToken)
+    {
+        var applicationIds = await _db.Applications
+            .AsNoTracking()
+            .Where(application =>
+                application.Status == ApplicationStatus.Processing &&
+                application.ExternalApplicationId != null)
+            .Select(application => application.Id)
+            .ToListAsync(cancellationToken);
+
+        var changedCount = 0;
+
+        foreach (var applicationId in applicationIds)
+        {
+            try
+            {
+                var result = await ReconcileAsync(
+                    applicationId,
+                    cancellationToken);
+
+                if (result.Changed)
+                {
+                    changedCount++;
+                }
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Background reconciliation failed for application {ApplicationId}.",
+                    applicationId);
+            }
+        }
+
+        return changedCount;
     }
 
     public async Task<ApplicationResponse?> GetByIdAsync(

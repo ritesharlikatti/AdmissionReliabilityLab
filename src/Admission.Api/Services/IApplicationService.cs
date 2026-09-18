@@ -24,6 +24,10 @@ public interface IApplicationService
     Task<ReconciliationResponse> ReconcileAsync(
         int applicationId,
         CancellationToken cancellationToken);
+
+    Task<int> ReconcileProcessingApplicationsAsync(
+        CancellationToken cancellationToken);
+
     Task<ApplicationResponse?> GetByIdAsync(
         int id,
         CancellationToken cancellationToken);
