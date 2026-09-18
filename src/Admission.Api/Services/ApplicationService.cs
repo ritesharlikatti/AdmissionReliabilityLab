@@ -365,10 +365,31 @@ public class ApplicationService : IApplicationService
     }
 
     public async Task<List<ApplicationResponse>> GetAllAsync(
+        string? status,
         CancellationToken cancellationToken)
     {
-        return await _db.Applications
+        var query = _db.Applications
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (!Enum.TryParse<ApplicationStatus>(
+                    status,
+                    ignoreCase: true,
+                    out var parsedStatus)
+                || !Enum.IsDefined(parsedStatus))
+            {
+                throw new ArgumentException(
+                    $"Unsupported application status '{status}'.",
+                    nameof(status));
+            }
+
+            query = query.Where(
+                application => application.Status == parsedStatus);
+        }
+
+        return await query
             .OrderBy(application => application.Id)
             .Select(application => new ApplicationResponse
             {

@@ -19,12 +19,27 @@ public class ApplicationsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<List<ApplicationResponse>>> GetAll(
+        [FromQuery] string? status,
         CancellationToken cancellationToken)
     {
-        var applications =
-            await _applicationService.GetAllAsync(cancellationToken);
+        try
+        {
+            var applications =
+                await _applicationService.GetAllAsync(
+                    status,
+                    cancellationToken);
 
-        return Ok(applications);
+            return Ok(applications);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid application status",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
     }
 
     [HttpPost]

@@ -7,6 +7,7 @@ namespace Admission.Api.Services;
 public interface IApplicationService
 {
     Task<List<ApplicationResponse>> GetAllAsync(
+        string? status,
         CancellationToken cancellationToken);
     Task<ApplicationResponse> CreateAsync(
         CreateApplicationRequest request,
